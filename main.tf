@@ -38,12 +38,6 @@ module "alb" {
   policy                        = module.iam-controller.aws_iam_role_policy_attachment
 }
 
-module "iam-controller" {
-  source                        = "./modules/iam-controller"
-  eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
-  eks_cluster_url               = module.eks.cluster_endpoint
-}
-
 
 module "eks" {
   source          = "./modules/eks"
