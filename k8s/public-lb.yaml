@@ -1,14 +1,126 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bookingfederaldigest
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking
+  namespace: bookingfederaldigest
+spec:
+  selector:
+    matchLabels:
+      app: booking
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: booking
+    spec:
+      containers:
+      - image: 896644348821.dkr.ecr.us-east-1.amazonaws.com/overflow-infra-prod:3df94507072d646a7daba29d1f347170771ca25a
+        name: booking
+        ports:
+        - containerPort: 3000
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: public-lb
-  annotations: 
-    services.beta.kubernetes.io/aws-load-balancer-type: nlb
+  name: booking
+  namespace: bookingfederaldigest
 spec:
-  type: LoadBalancer
-  selector:
-    app: nginx
   ports:
-      protocol: TCP
-      port: 80
-      targetPort: web
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+  type: NodePort
+  selector:
+    app: booking
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: booking
+  namespace: bookingfederaldigest
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/group.name: bookingGroup
+    alb.ingress.kubernetes.io/group.order: '1'
+spec:
+  ingressClassName: alb
+  rules:
+    - host: testbook.thefeddigest.com
+      http:
+        paths:
+          - path: /
+            pathType: Exact
+            backend:
+              service:
+                name: booking
+                port:
+                  number: 80
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bookingfederaledge
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking
+  namespace: bookingfederaledge
+spec:
+  selector:
+    matchLabels:
+      app: booking
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: booking
+    spec:
+      containers:
+      - image: 896644348821.dkr.ecr.us-east-1.amazonaws.com/overflow-infra-prod:3df94507072d646a7daba29d1f347170771ca25a
+        name: booking
+        ports:
+        - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking
+  namespace: bookingfederaledge
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+  type: NodePort
+  selector:
+    app: booking
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: booking
+  namespace: bookingfederaledge
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/group.name: bookingGroup
+    alb.ingress.kubernetes.io/group.order: '2'
+spec:
+  ingressClassName: alb
+  rules:
+    - host: testbook.thefeddigest.com
+      http:
+        paths:
+          - path: /
+            pathType: Exact
+            backend:
+              service:
+                name: booking
+                port:
+                  number: 80

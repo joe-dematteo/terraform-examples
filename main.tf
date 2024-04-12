@@ -27,6 +27,23 @@ resource "aws_ecr_repository" "ecr" {
   tags = module.tags.tags
 }
 
+module "alb" {
+  source                        = "./modules/alb"
+  eks_cluster_cert              = module.eks.cluster_ca_certificate
+  eks_cluster_endpoint          = module.eks.cluster_endpoint
+  eks_cluster_name              = module.eks.cluster_name
+  iam_role_arn                  = module.iam-controller.aws_load_balancer_controller_role_arn
+  eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
+  node_groups                   = module.eks.managed_node_groups
+  policy                        = module.iam-controller.aws_iam_role_policy_attachment
+}
+
+module "iam-controller" {
+  source                        = "./modules/iam-controller"
+  eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
+  eks_cluster_url               = module.eks.cluster_endpoint
+}
+
 
 module "eks" {
   source          = "./modules/eks"

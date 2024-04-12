@@ -65,6 +65,10 @@ module "eks" {
   iam_role_use_name_prefix = false
   iam_role_description     = "EKS cluster role"
 
+  enable_irsa                     = true
+  openid_connect_audiences        = ["sts.amazonaws.com"]
+  include_oidc_root_ca_thumbprint = true
+
   iam_role_additional_policies = {
     AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
   }
@@ -95,4 +99,28 @@ module "eks" {
   }
 
   tags = var.tags
+}
+
+output "cluster_endpoint" {
+  value = module.eks.cluster_endpoint
+}
+
+output "cluster_name" {
+  value = module.eks.cluster_name
+}
+
+output "oidc_provider_arn" {
+  value = module.eks.oidc_provider_arn
+}
+
+output "oidc_provider_url" {
+  value = module.eks.cluster_oidc_issuer_url
+}
+
+output "cluster_ca_certificate" {
+  value = module.eks.cluster_certificate_authority_data
+}
+
+output "managed_node_groups" {
+  value = module.eks.eks_managed_node_groups
 }
