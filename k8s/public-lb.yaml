@@ -114,7 +114,7 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - host: testbook.thefeddigest.com
+    - host: testbook.thefederaledge.com
       http:
         paths:
           - path: /

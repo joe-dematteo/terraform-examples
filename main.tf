@@ -1,5 +1,4 @@
 locals {
-  name     = "overflow-infra-${var.env}"
   vpc_cidr = "10.0.0.0/16"
   azs      = ["us-east-1a", "us-east-1b", "us-east-1c"]
 }
@@ -22,7 +21,7 @@ terraform {
 
 
 resource "aws_ecr_repository" "ecr" {
-  name = local.name
+  name = var.eks_cluster_name
 
   tags = module.tags.tags
 }
@@ -31,7 +30,7 @@ module "alb" {
   source                        = "./modules/alb"
   eks_cluster_cert              = module.eks.cluster_ca_certificate
   eks_cluster_endpoint          = module.eks.cluster_endpoint
-  eks_cluster_name              = module.eks.cluster_name
+  eks_cluster_name              = var.eks_cluster_name
   eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
   node_groups                   = module.eks.managed_node_groups
 }
@@ -39,7 +38,7 @@ module "alb" {
 
 module "eks" {
   source          = "./modules/eks"
-  name            = local.name
+  name            = var.eks_cluster_name
   vpc_id          = module.vpc.vpc_id
   intra_subnets   = module.vpc.intra_subnets
   private_subnets = module.vpc.private_subnets
@@ -48,18 +47,19 @@ module "eks" {
 
 
 module "vpc" {
-  source   = "./modules/vpc"
-  name     = local.name
-  azs      = local.azs
-  vpc_cidr = local.vpc_cidr
-  tags     = module.tags.tags
+  source       = "./modules/vpc"
+  name         = var.eks_cluster_name
+  azs          = local.azs
+  vpc_cidr     = local.vpc_cidr
+  tags         = module.tags.tags
+  cluster_name = var.eks_cluster_name
 }
 
 module "key_pair" {
   source  = "terraform-aws-modules/key-pair/aws"
   version = "~> 2.0"
 
-  key_name_prefix    = local.name
+  key_name_prefix    = var.eks_cluster_name
   create_private_key = true
 
   tags = module.tags.tags
@@ -69,7 +69,7 @@ module "tags" {
   source  = "clowdhaus/tags/aws"
   version = "~> 1.0"
 
-  application = local.name
+  application = var.eks_cluster_name
   environment = var.env
   repository  = "https://github.com/clowdhaus/eks-reference-architecture"
 }

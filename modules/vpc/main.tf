@@ -1,23 +1,4 @@
 
-variable "name" {
-  description = "Name of the VPC"
-}
-
-variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
-}
-
-variable "azs" {
-  description = "List of availability zones"
-  type        = list(string)
-}
-
-variable "tags" {
-  description = "Tags to apply to the resources"
-  type        = map(string)
-}
-
-
 module "vpc" {
   # https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest
   source  = "terraform-aws-modules/vpc/aws"
@@ -45,28 +26,15 @@ module "vpc" {
   intra_subnet_assign_ipv6_address_on_creation   = true
 
   public_subnet_tags = {
-    "kubernetes.io/role/elb" = 1
+    "kubernetes.io/role/elb"                    = 1
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
+
   }
 
   private_subnet_tags = {
-    "kubernetes.io/role/internal-elb" = 1
+    "kubernetes.io/role/internal-elb"           = 1
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 
   tags = var.tags
-}
-
-output "vpc_id" {
-  value = module.vpc.vpc_id
-}
-
-output "private_subnets" {
-  value = module.vpc.private_subnets
-}
-
-output "public_subnets" {
-  value = module.vpc.public_subnets
-}
-
-output "intra_subnets" {
-  value = module.vpc.intra_subnets
 }
