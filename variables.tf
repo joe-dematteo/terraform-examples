@@ -12,6 +12,7 @@ variable "region" {
 variable "profile" {
   description = "AWS profile"
   type        = string
+  default     = "default"
 }
 
 # variable "access_key" {
@@ -24,8 +25,8 @@ variable "profile" {
 #   type        = string
 # }
 
-variable "eks_cluster_name" {
-  description = "Name of the EKS cluster"
-  type        = string
-  default     = "overflow-infra"
-}
+# variable "eks_cluster_name" {
+#   description = "Name of the EKS cluster"
+#   type        = string
+#   default     = "overflow-infra"
+# }

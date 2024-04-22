@@ -1,75 +1,113 @@
 locals {
-  vpc_cidr = "10.0.0.0/16"
-  azs      = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  eks_cluster_name = basename(path.cwd)
+  vpc_cidr         = "10.0.0.0/16"
+  azs              = ["us-east-1a", "us-east-1b", "us-east-1c"]
+}
+
+
+
+terraform {
+  required_version = "~> 1.7"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.40"
+    }
+
+    helm = {
+      source  = "hashicorp/helm"
+      version = ">= 2.13"
+    }
+
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = ">= 1.14.0"
+    }
+  }
+
 }
 
 provider "aws" {
   region  = var.region
   profile = var.profile
-  # access_key = var.access_key
-  # secret_key = var.secret_key
 }
 
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.40"
+provider "helm" {
+  kubernetes {
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_ca_certificate)
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      args        = ["eks", "get-token", "--cluster-name", local.eks_cluster_name]
+      command     = "aws"
     }
   }
 }
 
+provider "kubectl" {
+  apply_retry_count      = 5
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_ca_certificate)
+  load_config_file       = false
 
-resource "aws_ecr_repository" "ecr" {
-  name = var.eks_cluster_name
-
-  tags = module.tags.tags
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    args        = ["eks", "get-token", "--cluster-name", local.eks_cluster_name]
+    command     = "aws"
+  }
 }
 
-module "alb" {
-  source                        = "./modules/alb"
-  eks_cluster_cert              = module.eks.cluster_ca_certificate
-  eks_cluster_endpoint          = module.eks.cluster_endpoint
-  eks_cluster_name              = var.eks_cluster_name
-  eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
-  node_groups                   = module.eks.managed_node_groups
+module "vpc" {
+  source       = "./modules/vpc"
+  name         = local.eks_cluster_name
+  azs          = local.azs
+  vpc_cidr     = local.vpc_cidr
+  tags         = module.tags.tags
+  cluster_name = local.eks_cluster_name
 }
-
 
 module "eks" {
   source          = "./modules/eks"
-  name            = var.eks_cluster_name
+  name            = local.eks_cluster_name
   vpc_id          = module.vpc.vpc_id
   intra_subnets   = module.vpc.intra_subnets
   private_subnets = module.vpc.private_subnets
   tags            = module.tags.tags
 }
 
-
-module "vpc" {
-  source       = "./modules/vpc"
-  name         = var.eks_cluster_name
-  azs          = local.azs
-  vpc_cidr     = local.vpc_cidr
-  tags         = module.tags.tags
-  cluster_name = var.eks_cluster_name
+module "alb" {
+  source                        = "./modules/alb"
+  eks_cluster_cert              = module.eks.cluster_ca_certificate
+  eks_cluster_endpoint          = module.eks.cluster_endpoint
+  eks_cluster_name              = local.eks_cluster_name
+  eks_cluster_oidc_provider_arn = module.eks.oidc_provider_arn
+  region                        = var.region
+  vpc_id                        = module.vpc.vpc_id
+  tags                          = module.tags.tags
 }
 
-module "key_pair" {
-  source  = "terraform-aws-modules/key-pair/aws"
-  version = "~> 2.0"
+module "karpenter" {
+  source = "./modules/karpenter"
 
-  key_name_prefix    = var.eks_cluster_name
-  create_private_key = true
+  eks_cluster_name     = local.eks_cluster_name
+  eks_cluster_cert     = module.eks.cluster_ca_certificate
+  eks_cluster_endpoint = module.eks.cluster_endpoint
+  oidc_provider_arn    = module.eks.oidc_provider_arn
+  tags                 = module.tags.tags
+}
+
+resource "aws_ecr_repository" "ecr" {
+  name = local.eks_cluster_name
 
   tags = module.tags.tags
 }
 
 module "tags" {
   source  = "clowdhaus/tags/aws"
-  version = "~> 1.0"
+  version = ">= 1.0"
 
-  application = var.eks_cluster_name
+  application = local.eks_cluster_name
   environment = var.env
   repository  = "https://github.com/clowdhaus/eks-reference-architecture"
 }

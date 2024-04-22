@@ -13,7 +13,7 @@ spec:
   selector:
     matchLabels:
       app: booking
-  replicas: 1
+  replicas: 2
   template:
     metadata:
       labels:
@@ -24,6 +24,10 @@ spec:
         name: booking
         ports:
         - containerPort: 3000
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
 ---
 apiVersion: v1
 kind: Service
@@ -76,7 +80,7 @@ spec:
   selector:
     matchLabels:
       app: booking
-  replicas: 1
+  replicas: 2
   template:
     metadata:
       labels:
@@ -87,6 +91,10 @@ spec:
         name: booking
         ports:
         - containerPort: 3000
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
 ---
 apiVersion: v1
 kind: Service

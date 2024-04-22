@@ -1,26 +1,3 @@
-variable "name" {
-  description = "Name of the EKS cluster"
-}
-
-variable "vpc_id" {
-  description = "VPC ID"
-}
-
-variable "private_subnets" {
-  description = "Private subnets"
-  type        = list(string)
-}
-
-variable "intra_subnets" {
-  description = "Intra subnets"
-  type        = list(string)
-}
-
-variable "tags" {
-  description = "Tags to apply to the resources"
-  type        = map(string)
-}
-
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
@@ -66,61 +43,23 @@ module "eks" {
   iam_role_description     = "EKS cluster role"
 
   enable_irsa                     = true
-  openid_connect_audiences        = ["sts.amazonaws.com"]
   include_oidc_root_ca_thumbprint = true
+
+  cluster_security_group_tags = {
+    "kubernetes.io/cluster/${var.name}" = "shared"
+    "kubernetes.io/role/elb"            = "1"
+    "karpenter.sh/discovery"            = var.name
+  }
 
   iam_role_additional_policies = {
     AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
   }
 
-
-  # EKS Managed Node Group(s)
-  eks_managed_node_group_defaults = {
-    ami_type       = "AL2_x86_64"
-    instance_types = ["t3a.xlarge", "t2.large", "t2.medium"]
-
-    attach_cluster_primary_security_group = true
-  }
-
-
-
-  eks_managed_node_groups = {
-    overflow-cluster-wg = {
-      min_size     = 1
-      max_size     = 10
-      desired_size = 1
-
-      disk_size = 20
-
-      instance_types = ["t2.medium"]
-      capacity_type  = "SPOT"
-    }
-
-  }
-
-  tags = var.tags
+  tags = merge(var.tags, {
+    # NOTE - if creating multiple security groups with this module, only tag the
+    # security group that Karpenter should utilize with the following tag
+    # (i.e. - at most, only one security group should have this tag in your account)
+    "karpenter.sh/discovery" = var.name
+  })
 }
 
-output "cluster_endpoint" {
-  value = module.eks.cluster_endpoint
-}
-
-output "cluster_name" {
-  value = module.eks.cluster_name
-}
-
-output "oidc_provider_arn" {
-  value = module.eks.oidc_provider_arn
-}
-
-output "oidc_provider_url" {
-  value = module.eks.cluster_oidc_issuer_url
-}
-
-output "cluster_ca_certificate" {
-  value = module.eks.cluster_certificate_authority_data
-}
-
-output "managed_node_groups" {
-  value = module.eks.eks_managed_node_groups
-}
