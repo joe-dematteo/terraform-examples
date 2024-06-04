@@ -11,8 +11,6 @@ module "eks" {
   # To add the current caller identity as an administrator
   enable_cluster_creator_admin_permissions = true
 
-  enable_efa_support = true
-
   cluster_addons = {
     coredns = {
       most_recent = true
