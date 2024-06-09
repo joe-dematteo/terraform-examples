@@ -2,14 +2,13 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
 
-  cluster_name                   = var.name
-  cluster_version                = "1.29"
-  cluster_endpoint_public_access = true
+  cluster_name    = var.name
+  cluster_version = "1.29"
 
-
-  # Cluster access entry
-  # To add the current caller identity as an administrator
+  # Gives Terraform identity admin access to cluster which will
+  # allow deploying resources (Karpenter) into the cluster  # To add the current caller identity as an administrator
   enable_cluster_creator_admin_permissions = true
+  cluster_endpoint_public_access           = true
 
   cluster_addons = {
     coredns = {
@@ -19,15 +18,7 @@ module "eks" {
       most_recent = true
     }
     vpc-cni = {
-      most_recent    = true
-      before_compute = true
-      configuration_values = jsonencode({
-        env = {
-          # Reference docs https://docs.aws.amazon.com/eks/latest/userguide/cni-increase-ip-addresses.html
-          ENABLE_PREFIX_DELEGATION = "true"
-          WARM_PREFIX_TARGET       = "1"
-        }
-      })
+      most_recent = true
     }
   }
 
@@ -51,6 +42,25 @@ module "eks" {
 
   iam_role_additional_policies = {
     AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  }
+
+  eks_managed_node_groups = {
+    karpenter = {
+      instance_types = ["t3.medium"]
+
+      min_size     = 1
+      max_size     = 3
+      desired_size = 1
+      taints = {
+        # This Taint aims to keep just EKS Addons and Karpenter running on this MNG
+        # The pods that do not tolerate this taint should run on nodes created by Karpenter
+        addons = {
+          key    = "CriticalAddonsOnly"
+          value  = "true"
+          effect = "NO_SCHEDULE"
+        },
+      }
+    }
   }
 
   tags = merge(var.tags, {

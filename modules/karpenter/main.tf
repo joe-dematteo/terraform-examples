@@ -23,6 +23,7 @@ provider "kubectl" {
 
 
 module "karpenter" {
+  # https://github.com/terraform-aws-modules/terraform-aws-eks/blob/master/examples/karpenter/main.tf
   source = "terraform-aws-modules/eks/aws//modules/karpenter"
 
   cluster_name = var.eks_cluster_name
@@ -83,7 +84,7 @@ resource "kubectl_manifest" "karpenter_node_class" {
       name: default
     spec:
       amiFamily: AL2
-      role: ${module.karpenter.node_iam_role_name}
+      role: ${module.karpenter.iam_role_arn}
       subnetSelectorTerms:
         - tags:
             karpenter.sh/discovery: ${var.eks_cluster_name}
@@ -124,7 +125,6 @@ resource "kubectl_manifest" "karpenter_node_pool" {
         cpu: 1000
       disruption:
         consolidationPolicy: WhenUnderutilized
-        consolidateAfter: 60s
   YAML
 
   depends_on = [

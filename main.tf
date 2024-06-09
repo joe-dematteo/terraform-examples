@@ -94,7 +94,8 @@ module "karpenter" {
   eks_cluster_cert     = module.eks.cluster_ca_certificate
   eks_cluster_endpoint = module.eks.cluster_endpoint
   oidc_provider_arn    = module.eks.oidc_provider_arn
-  tags                 = module.tags.tags
+  # eks_node_iam_role_arn = module.eks.managed_node_groups["initial"].iam_role_arn
+  tags = module.tags.tags
 }
 
 resource "aws_ecr_repository" "ecr" {

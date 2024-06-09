@@ -43,4 +43,6 @@ resource "helm_release" "aws-load-balancer-controller" {
     value = var.vpc_id
   }
 
+  depends_on = [module.alb_controller_irsa]
+
 }

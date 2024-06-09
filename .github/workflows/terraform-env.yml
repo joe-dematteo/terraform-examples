@@ -10,6 +10,7 @@ jobs:
   terraform-PROD:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    environment: prod
     steps:
       - name: Checkout code
         uses: actions/checkout@master
