@@ -1,16 +1,16 @@
 locals {
-  name       = basename(abspath(path.root))
+  name       = basename(path.cwd)
   vpc_cidr   = "10.0.0.0/16"
   azs        = ["us-east-1a", "us-east-1b", "us-east-1c"]
   region     = "us-east-1"
-  repository = basename(abspath(path.root))
+  repository = basename(path.cwd)
 
   tags = {
     Application = local.name
     CreatedBy   = "Terraform"
     DeployedBy  = data.aws_caller_identity.current.arn
     Environment = var.env
-    repository  = local.repository
+    Repository  = local.repository
   }
 }
 

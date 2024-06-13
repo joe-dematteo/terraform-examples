@@ -67,7 +67,10 @@ module "ecs_service" {
   # Container definition(s)
   container_definitions = {
     (local.container_name) = {
-      image = "public.ecr.aws/ecs-sample-image/amazon-ecs-sample:latest"
+      # NEED IMAGE HERE, was having issues with pulling image on tasks..? Try to push nginx image to a public ecr and try that
+      image  = 
+      cpu    = 256
+      memory = 512
       port_mappings = [
         {
           name          = local.container_name
