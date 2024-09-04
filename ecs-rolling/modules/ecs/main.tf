@@ -1,7 +1,7 @@
 locals {
   target_group_name = "${var.cluster_name}-tg"
   container_name    = "sample-app"
-  container_port    = 80
+  container_port    = 3000
 }
 
 ################################################################################
@@ -68,7 +68,7 @@ module "ecs_service" {
   container_definitions = {
     (local.container_name) = {
       # NEED IMAGE HERE, was having issues with pulling image on tasks..? Try to push nginx image to a public ecr and try that
-      image  = 
+      image  = "896644348821.dkr.ecr.us-east-1.amazonaws.com/joeandjoe-temp:overflow-marketing-flow-web-2-9afa7b764530b0622a6126876754643a948eeb90"
       cpu    = 256
       memory = 512
       port_mappings = [
@@ -119,6 +119,13 @@ module "ecs_service" {
       protocol                 = "tcp"
       description              = "Service port"
       source_security_group_id = module.alb.security_group_id
+    }
+    egress_all = {
+      type        = "egress"
+      from_port   = 0
+      to_port     = 0
+      protocol    = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
     }
   }
 
@@ -184,7 +191,7 @@ module "alb" {
   target_groups = {
     (local.target_group_name) = {
       backend_protocol                  = "HTTP"
-      backend_port                      = var.target_group_backend_port
+      backend_port                      = local.container_port
       target_type                       = "ip"
       deregistration_delay              = 5
       load_balancing_cross_zone_enabled = true
