@@ -37,23 +37,23 @@ module "ecs_cluster" {
 
 module "ecs_service" {
   source = "terraform-aws-modules/ecs/aws//modules/service"
-
+  
   # Service
   name        = var.cluster_name
   cluster_arn = module.ecs_cluster.arn
 
-  cpu = 256
-  memory = 512
-
   # Enables ECS Exec
   enable_execute_command = true
+
+  cpu    = 512
+  memory = 1024
 
   # Container definition(s)
   container_definitions = {
     (local.container_name) = {
-      image  = "896644348821.dkr.ecr.us-east-1.amazonaws.com/joeandjoe-temp:overflow-marketing-booking-73af0a8d03ce585ed8a7da9dfbc44b4c000b7103"
-      cpu    = 256
-      memory = 512
+      image  = "896644348821.dkr.ecr.us-east-1.amazonaws.com/joeandjoe-temp:overflow-marketing-booking-8965e0fe0cb66bc8dff19518de40a42ca20f658a"
+      cpu    = 512
+      memory = 1024
       port_mappings = [
         {
           name          = local.container_name
@@ -77,6 +77,32 @@ module "ecs_service" {
       }
     }
   }
+
+  autoscaling_policies = {
+    cpu = {
+      policy_type = "TargetTrackingScaling"
+      target_tracking_scaling_policy_configuration = {
+        predefined_metric_specification = {
+          predefined_metric_type = "ECSServiceAverageCPUUtilization"
+        }
+        target_value = 65
+        scale_in_cooldown  = 300
+        scale_out_cooldown = 15
+      }
+    }
+    memory = {
+      policy_type = "TargetTrackingScaling"
+      target_tracking_scaling_policy_configuration = {
+        predefined_metric_specification = {
+          predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+        }
+        target_value = 65
+        scale_in_cooldown  = 300
+        scale_out_cooldown = 15
+      }
+    }
+  }
+
 
   service_connect_configuration = {
     namespace = aws_service_discovery_http_namespace.this.arn
@@ -122,7 +148,16 @@ module "ecs_service" {
   }
 
   tags = var.tags
+
+  # alarms = {
+  #   alarm_names = [
+
+  #   ]
+  #   enable   = false
+  #   rollback = false
+  # }
 }
+# TODO: need to look into getting rid of and/or modifying default autoscaling alarms. People saying it may have to do with having auto scaling enabled?
 
 ################################################################################
 # Supporting Resources
@@ -196,13 +231,13 @@ module "alb" {
 
       health_check = {
         enabled             = true
-        healthy_threshold   = 5
-        interval            = 30
-        matcher             = "200"
+        matcher             = "200-399"
         path                = "/"
         port                = "traffic-port"
         protocol            = "HTTP"
+        interval            = 15
         timeout             = 5
+        healthy_threshold   = 3
         unhealthy_threshold = 2
       }
 
@@ -230,4 +265,89 @@ module "vpc" {
   single_nat_gateway = true
 
   tags = var.tags
+}
+
+################################################################################
+# Alarms
+################################################################################
+
+### Custom CPU AlarmHigh
+resource "aws_cloudwatch_metric_alarm" "cpu_high" {
+  alarm_name          = "${var.cluster_name}/${module.ecs_service.name}-service/cpu-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "1"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = "60"  # 1 minute
+  statistic           = "Maximum"  # Changed from Average to Maximum
+  threshold           = "65"
+  alarm_description   = "This metric monitors ECS CPU high utilization"
+  
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = module.ecs_service.name
+  }
+
+  alarm_actions = [module.ecs_service.autoscaling_policies["cpu"].arn]
+}
+
+
+### Custom CPU AlarmLow
+resource "aws_cloudwatch_metric_alarm" "cpu_low" {
+  alarm_name          = "${var.cluster_name}/${module.ecs_service.name}-service/cpu-low"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/ECS"
+  period              = "60"
+  statistic           = "Average"
+  threshold           = "30"
+  alarm_description   = "This metric monitors ECS CPU low utilization"
+  
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = module.ecs_service.name
+  }
+
+  alarm_actions = [module.ecs_service.autoscaling_policies["cpu"].arn]
+}
+
+### Custom Memory AlarmHigh
+resource "aws_cloudwatch_metric_alarm" "memory_high" {
+  alarm_name          = "${var.cluster_name}/${module.ecs_service.name}-service/memory-high"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = "60"
+  statistic           = "Average"
+  threshold           = "65"
+  alarm_description   = "This metric monitors ECS memory high utilization"
+  
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = module.ecs_service.name
+  }
+
+  alarm_actions = [module.ecs_service.autoscaling_policies["memory"].arn]
+}
+
+### Custom Memory AlarmLow
+resource "aws_cloudwatch_metric_alarm" "memory_low" {
+  alarm_name          = "${var.cluster_name}/${module.ecs_service.name}-service/memory-low"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = "2"
+  metric_name         = "MemoryUtilization"
+  namespace           = "AWS/ECS"
+  period              = "60"
+  statistic           = "Average"
+  threshold           = "30"
+  alarm_description   = "This metric monitors ECS memory low utilization"
+  
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = module.ecs_service.name
+  }
+
+  alarm_actions = [module.ecs_service.autoscaling_policies["memory"].arn]
 }
