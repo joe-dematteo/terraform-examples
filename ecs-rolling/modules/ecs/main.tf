@@ -326,7 +326,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
   evaluation_periods  = "2"
   metric_name         = "CPUUtilization"
   namespace           = "AWS/ECS"
-  period              = "600" # 7.5 minutes
+  period              = "300" 
   statistic           = "Maximum"
   threshold           = "30"
   alarm_description   = "This metric monitors ECS CPU low utilization"
@@ -366,7 +366,7 @@ resource "aws_cloudwatch_metric_alarm" "memory_low" {
   evaluation_periods  = "2"
   metric_name         = "MemoryUtilization"
   namespace           = "AWS/ECS"
-  period              = "600" # 7.5 minutes
+  period              = "300" 
   statistic           = "Maximum"
   threshold           = "30"
   alarm_description   = "This metric monitors ECS memory low utilization"
