@@ -79,26 +79,60 @@ module "ecs_service" {
   }
 
   autoscaling_policies = {
-    cpu = {
-      policy_type = "TargetTrackingScaling"
-      target_tracking_scaling_policy_configuration = {
-        predefined_metric_specification = {
-          predefined_metric_type = "ECSServiceAverageCPUUtilization"
-        }
-        target_value = 65
-        scale_in_cooldown  = 300
-        scale_out_cooldown = 15
+    cpu_scale_out = {
+      policy_type = "StepScaling"
+      step_scaling_policy_configuration = {
+        adjustment_type         = "ChangeInCapacity"
+        cooldown                = 60
+        metric_aggregation_type = "Maximum"
+        step_adjustment = [
+          {
+            metric_interval_lower_bound = 0
+            scaling_adjustment          = 1
+          }
+        ]
       }
     }
-    memory = {
-      policy_type = "TargetTrackingScaling"
-      target_tracking_scaling_policy_configuration = {
-        predefined_metric_specification = {
-          predefined_metric_type = "ECSServiceAverageMemoryUtilization"
-        }
-        target_value = 65
-        scale_in_cooldown  = 300
-        scale_out_cooldown = 15
+    cpu_scale_in = {
+      policy_type = "StepScaling"
+      step_scaling_policy_configuration = {
+        adjustment_type         = "ChangeInCapacity"
+        cooldown                = 300
+        metric_aggregation_type = "Average"
+        step_adjustment = [
+          {
+            metric_interval_upper_bound = 0
+            scaling_adjustment          = -1
+          }
+        ]
+      }
+    }
+    memory_scale_out = {
+      policy_type = "StepScaling"
+      step_scaling_policy_configuration = {
+        adjustment_type         = "ChangeInCapacity"
+        cooldown                = 60
+        metric_aggregation_type = "Maximum"
+        step_adjustment = [
+          {
+            metric_interval_lower_bound = 0
+            scaling_adjustment          = 1
+          }
+        ]
+      }
+    }
+    memory_scale_in = {
+      policy_type = "StepScaling"
+      step_scaling_policy_configuration = {
+        adjustment_type         = "ChangeInCapacity"
+        cooldown                = 300
+        metric_aggregation_type = "Average"
+        step_adjustment = [
+          {
+            metric_interval_upper_bound = 0
+            scaling_adjustment          = -1
+          }
+        ]
       }
     }
   }
@@ -149,13 +183,6 @@ module "ecs_service" {
 
   tags = var.tags
 
-  # alarms = {
-  #   alarm_names = [
-
-  #   ]
-  #   enable   = false
-  #   rollback = false
-  # }
 }
 # TODO: need to look into getting rid of and/or modifying default autoscaling alarms. People saying it may have to do with having auto scaling enabled?
 
@@ -278,8 +305,8 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   evaluation_periods  = "1"
   metric_name         = "CPUUtilization"
   namespace           = "AWS/ECS"
-  period              = "60"  # 1 minute
-  statistic           = "Maximum"  # Changed from Average to Maximum
+  period              = "30"  # 30 seconds
+  statistic           = "Maximum"  
   threshold           = "65"
   alarm_description   = "This metric monitors ECS CPU high utilization"
   
@@ -288,7 +315,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
     ServiceName = module.ecs_service.name
   }
 
-  alarm_actions = [module.ecs_service.autoscaling_policies["cpu"].arn]
+  alarm_actions = [module.ecs_service.autoscaling_policies["cpu_scale_out"].arn]
 }
 
 
@@ -299,7 +326,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
   evaluation_periods  = "2"
   metric_name         = "CPUUtilization"
   namespace           = "AWS/ECS"
-  period              = "60"
+  period              = "300" # 5 minutes
   statistic           = "Average"
   threshold           = "30"
   alarm_description   = "This metric monitors ECS CPU low utilization"
@@ -309,17 +336,17 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
     ServiceName = module.ecs_service.name
   }
 
-  alarm_actions = [module.ecs_service.autoscaling_policies["cpu"].arn]
+  alarm_actions = [module.ecs_service.autoscaling_policies["cpu_scale_in"].arn]
 }
 
 ### Custom Memory AlarmHigh
 resource "aws_cloudwatch_metric_alarm" "memory_high" {
   alarm_name          = "${var.cluster_name}/${module.ecs_service.name}-service/memory-high"
   comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "2"
+  evaluation_periods  = "1"
   metric_name         = "MemoryUtilization"
   namespace           = "AWS/ECS"
-  period              = "60"
+  period              = "30" # 30 seconds
   statistic           = "Average"
   threshold           = "65"
   alarm_description   = "This metric monitors ECS memory high utilization"
@@ -329,7 +356,7 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
     ServiceName = module.ecs_service.name
   }
 
-  alarm_actions = [module.ecs_service.autoscaling_policies["memory"].arn]
+  alarm_actions = [module.ecs_service.autoscaling_policies["memory_scale_out"].arn]
 }
 
 ### Custom Memory AlarmLow
@@ -339,7 +366,7 @@ resource "aws_cloudwatch_metric_alarm" "memory_low" {
   evaluation_periods  = "2"
   metric_name         = "MemoryUtilization"
   namespace           = "AWS/ECS"
-  period              = "60"
+  period              = "180" # 3 minutes 
   statistic           = "Average"
   threshold           = "30"
   alarm_description   = "This metric monitors ECS memory low utilization"
@@ -349,5 +376,5 @@ resource "aws_cloudwatch_metric_alarm" "memory_low" {
     ServiceName = module.ecs_service.name
   }
 
-  alarm_actions = [module.ecs_service.autoscaling_policies["memory"].arn]
+  alarm_actions = [module.ecs_service.autoscaling_policies["memory_scale_in"].arn]
 }
