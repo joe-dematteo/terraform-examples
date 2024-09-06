@@ -98,7 +98,7 @@ module "ecs_service" {
       step_scaling_policy_configuration = {
         adjustment_type         = "ChangeInCapacity"
         cooldown                = 300
-        metric_aggregation_type = "Average"
+        metric_aggregation_type = "Maximum"
         step_adjustment = [
           {
             metric_interval_upper_bound = 0
@@ -126,7 +126,7 @@ module "ecs_service" {
       step_scaling_policy_configuration = {
         adjustment_type         = "ChangeInCapacity"
         cooldown                = 300
-        metric_aggregation_type = "Average"
+        metric_aggregation_type = "Maximum"
         step_adjustment = [
           {
             metric_interval_upper_bound = 0
@@ -326,8 +326,8 @@ resource "aws_cloudwatch_metric_alarm" "cpu_low" {
   evaluation_periods  = "2"
   metric_name         = "CPUUtilization"
   namespace           = "AWS/ECS"
-  period              = "300" # 5 minutes
-  statistic           = "Average"
+  period              = "600" # 7.5 minutes
+  statistic           = "Maximum"
   threshold           = "30"
   alarm_description   = "This metric monitors ECS CPU low utilization"
   
@@ -347,7 +347,7 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
   metric_name         = "MemoryUtilization"
   namespace           = "AWS/ECS"
   period              = "30" # 30 seconds
-  statistic           = "Average"
+  statistic           = "Maximum"
   threshold           = "65"
   alarm_description   = "This metric monitors ECS memory high utilization"
   
@@ -366,8 +366,8 @@ resource "aws_cloudwatch_metric_alarm" "memory_low" {
   evaluation_periods  = "2"
   metric_name         = "MemoryUtilization"
   namespace           = "AWS/ECS"
-  period              = "180" # 3 minutes 
-  statistic           = "Average"
+  period              = "600" # 7.5 minutes
+  statistic           = "Maximum"
   threshold           = "30"
   alarm_description   = "This metric monitors ECS memory low utilization"
   
