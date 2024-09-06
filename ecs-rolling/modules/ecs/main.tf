@@ -45,15 +45,15 @@ module "ecs_service" {
   # Enables ECS Exec
   enable_execute_command = true
 
-  cpu    = 256
-  memory = 512
+  cpu    = 512
+  memory = 1024
 
   # Container definition(s)
   container_definitions = {
     (local.container_name) = {
       image  = "896644348821.dkr.ecr.us-east-1.amazonaws.com/joeandjoe-temp:overflow-marketing-booking-8965e0fe0cb66bc8dff19518de40a42ca20f658a"
-      cpu    = 256
-      memory = 512
+      cpu    = 512
+      memory = 1024
       port_mappings = [
         {
           name          = local.container_name
