@@ -17,13 +17,13 @@ module "ecs_cluster" {
   fargate_capacity_providers = {
     FARGATE = {
       default_capacity_provider_strategy = {
-        weight = 50
-        base   = 20
+        weight = 20
+        base   = 1  # Ensure at least one task is always running
       }
     }
     FARGATE_SPOT = {
       default_capacity_provider_strategy = {
-        weight = 50
+        weight = 80
       }
     }
   }
@@ -45,11 +45,34 @@ module "ecs_service" {
   # Enables ECS Exec
   enable_execute_command = true
 
-  cpu    = 512
-  memory = 1024
+  cpu    = 1024
+  memory = 2048
 
   # Container definition(s)
   container_definitions = {
+    # fluent-bit = {
+    #   cpu       = 256
+    #   memory    = 512
+    #   image     = "grafana/fluent-bit-plugin-loki:2.9.3-amd64"
+    #   firelens_configuration = {
+    #     type = "fluentbit"
+    #     options = {
+    #       enable_ecs_log_metadata = "true"
+    #     }
+    #   }
+    #   logConfiguration = {
+    #     logDriver = "awslogs"
+    #     options = {
+    #       awslogs-group = "/aws/ecs/${var.cluster_name}/fluent-bit"
+    #       awslogs-region = "us-east-1"
+    #       awslogs-stream-prefix = "ecs"
+    #       awslogs-create-group = "true"
+    #     }
+    #   }
+    #   memory_reservation = 50
+    #   user               = "0"
+    # }
+
     (local.container_name) = {
       image  = "896644348821.dkr.ecr.us-east-1.amazonaws.com/joeandjoe-temp:overflow-marketing-booking-8965e0fe0cb66bc8dff19518de40a42ca20f658a"
       cpu    = 512
@@ -65,16 +88,31 @@ module "ecs_service" {
 
 
       # Example image used requires access to write to root filesystem
-      readonly_root_filesystem = false
+      readonly_root_filesystem  = false
+      enable_cloudwatch_logging = false
+      # memory_reservation = 100
+      # dependencies = [{
+      #   containerName = "fluent-bit"
+      #   condition     = "START"
+      # }]
 
-      enable_cloudwatch_logging              = true
-      create_cloudwatch_log_group            = true
-      cloudwatch_log_group_name              = "/aws/ecs/${var.cluster_name}/${local.container_name}"
-      cloudwatch_log_group_retention_in_days = 7
+      # log_configuration = {
+      #   logDriver = "awsfirelens"
+      #   options = {
+      #       Name = "loki"
+      #       Host = "<grafanacloud host>"
+      #       Http_User = "<userid>" 
+      #       Labels = "{job=\"firelens\"}"
+      #       RemoveKeys = "container_id,ecs_task_arn"
+      #       LabelKeys = "container_name,ecs_task_definition,source,ecs_cluster"
+      #       LineFormat = "key_value"
+      #   }
+      #   secretOptions = [{
+      #       name = "Http_Passwd"
+      #       valueFrom = "data.aws_secretsmanager_secret.grafana_cloud_loki_http_password.id"
+      #   }]
+      # }
 
-      log_configuration = {
-        logDriver = "awslogs"
-      }
     }
   }
 
@@ -184,7 +222,6 @@ module "ecs_service" {
   tags = var.tags
 
 }
-# TODO: need to look into getting rid of and/or modifying default autoscaling alarms. People saying it may have to do with having auto scaling enabled?
 
 ################################################################################
 # Supporting Resources
@@ -217,17 +254,29 @@ module "alb" {
 
   # Security Group
   security_group_ingress_rules = {
-    all_http = {
+    all_http_ipv4 = {
       from_port   = 80
       to_port     = 80
       ip_protocol = "tcp"
       cidr_ipv4   = "0.0.0.0/0"
     }
-    all_https = {
+    all_https_ipv4 = {
       from_port   = 443
       to_port     = 443
       ip_protocol = "tcp"
       cidr_ipv4   = "0.0.0.0/0"
+    }
+    all_http_ipv6 = {
+      from_port   = 80
+      to_port     = 80
+      ip_protocol = "tcp"
+      cidr_ipv6   = "::/0"
+    }
+    all_https_ipv6 = {
+      from_port   = 443
+      to_port     = 443
+      ip_protocol = "tcp"
+      cidr_ipv6   = "::/0"
     }
   }
   security_group_egress_rules = {
